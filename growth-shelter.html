@@ -53,8 +53,22 @@
   button{touch-action:manipulation;}
   .wrap{max-width:520px;margin:0 auto;padding:calc(22px + var(--safe-top)) 16px 40px;}
 
+  /* ---------- letter FAB ---------- */
+  .letter-fab{
+    position:fixed; top:calc(14px + var(--safe-top)); right:16px; z-index:40;
+    width:46px; height:46px; border-radius:50%;
+    background:var(--card); border:1.5px solid var(--line); box-shadow:var(--shadow);
+    font-size:20px; display:flex; align-items:center; justify-content:center;
+    cursor:pointer; position:fixed;
+  }
+  .letter-fab .badge{
+    position:absolute; top:-4px; right:-4px; background:var(--rose); color:#fff;
+    font-size:10px; min-width:17px; height:17px; border-radius:9px;
+    display:flex; align-items:center; justify-content:center; padding:0 4px; font-weight:700;
+  }
+
   /* ---------- Header ---------- */
-  header{padding:6px 4px 14px;}
+  header{padding:6px 44px 14px 4px;}
   .eyebrow{
     font-size:12.5px; letter-spacing:.16em; color:var(--moss-dark);
     font-weight:700; text-transform:uppercase;
@@ -107,6 +121,17 @@
   }
   .shelter-summary .sub{font-size:12.5px; opacity:.8;}
 
+  .deco-strip{
+    margin-top:12px; display:flex; gap:6px; overflow-x:auto; padding-bottom:2px; position:relative; z-index:1;
+  }
+  .deco-strip::-webkit-scrollbar{display:none;}
+  .deco-chip{
+    background:rgba(255,255,255,.14); border-radius:10px; padding:5px 9px; font-size:16px;
+    display:flex; align-items:center; gap:3px; flex:0 0 auto;
+  }
+  .deco-chip .cnt{font-size:10px; opacity:.75; font-weight:700;}
+  .deco-hint{font-size:11px; opacity:.65;}
+
   /* ---------- Add task form ---------- */
   .add-form{
     display:flex; gap:8px; margin-top:18px;
@@ -152,6 +177,51 @@
     font-family:inherit; white-space:nowrap;
   }
   .ghost-btn:hover{border-color:var(--moss); color:var(--moss-dark);}
+
+  /* ---------- Reward panel ---------- */
+  .reward-panel{
+    margin-top:18px; background:var(--card); border-radius:var(--radius);
+    padding:16px 18px 18px; box-shadow:var(--shadow); border:1px solid #f0ecdd;
+  }
+  .reward-head{font-family:'Shippori Mincho',serif; font-weight:800; font-size:16px; color:#2c3524;}
+  .reward-sub{font-size:11.5px; color:var(--ink-soft); margin-top:3px; line-height:1.6;}
+  .reward-form{display:flex; gap:6px; margin-top:12px;}
+  .reward-form input[type="text"]{
+    flex:1.6; border:1.5px solid var(--line); background:#fbf9f1; border-radius:12px;
+    padding:10px 12px; font-size:13.5px; font-family:inherit; outline:none;
+  }
+  .reward-form input[type="number"]{
+    flex:0.7; border:1.5px solid var(--line); background:#fbf9f1; border-radius:12px;
+    padding:10px 8px; font-size:13.5px; font-family:inherit; outline:none; min-width:0;
+  }
+  .reward-form input:focus{border-color:var(--amber);}
+  .reward-form button{
+    border:none; background:var(--amber); color:#fff; font-weight:700; font-size:13px;
+    border-radius:12px; padding:0 16px; cursor:pointer; font-family:inherit;
+  }
+  .reward-form button:hover{background:#c98f38;}
+  .reward-list{margin-top:12px; display:flex; flex-direction:column; gap:8px;}
+  .reward-empty{font-size:12.5px; color:var(--ink-soft); line-height:1.8; padding:6px 2px;}
+  .reward-item{
+    display:flex; align-items:center; gap:8px; border:1px solid var(--line); border-radius:14px;
+    padding:10px 12px; background:#fdfbf3;
+  }
+  .reward-item.claimed{opacity:.55;}
+  .reward-item-main{flex:1; min-width:0;}
+  .reward-item-text{font-size:13.5px; font-weight:700; color:var(--ink); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .reward-item.claimed .reward-item-text{text-decoration:line-through;}
+  .reward-item-meta{font-size:11px; margin-top:2px;}
+  .meta-pending{color:var(--ink-soft);}
+  .meta-reached{color:#b5762c; font-weight:700;}
+  .meta-claimed{color:var(--moss-dark);}
+  .claim-btn{
+    border:none; background:var(--amber); color:#fff; font-weight:700; font-size:12px;
+    padding:8px 12px; border-radius:10px; cursor:pointer; font-family:inherit; flex:0 0 auto;
+    animation:claimPulse 1.4s ease-in-out infinite;
+  }
+  @keyframes claimPulse{0%,100%{transform:scale(1);}50%{transform:scale(1.06);}}
+  .reward-check{color:var(--moss-dark); font-weight:800; font-size:16px; flex:0 0 auto;}
+  .del-btn.small{font-size:13px; flex:0 0 auto;}
 
   /* ---------- Task list ---------- */
   #taskList{margin-top:20px; display:flex; flex-direction:column; gap:16px;}
@@ -288,15 +358,67 @@
 
   @media (max-width:380px){
     .time-btns{grid-template-columns:repeat(2,1fr);}
+    .reward-form{flex-wrap:wrap;}
+    .reward-form input[type="text"]{flex:1 1 100%;}
   }
 
   /* standalone (installed) mode tweaks */
   @media (display-mode: standalone){
     .install-banner{display:none;}
   }
+
+  /* ---------- Modals (gift / letters) ---------- */
+  .modal-overlay{
+    position:fixed; inset:0; background:rgba(20,18,10,.55); display:none;
+    align-items:center; justify-content:center; z-index:100; padding:20px;
+  }
+  .modal-overlay.show{display:flex;}
+  .modal-card{
+    background:var(--card); border-radius:22px; padding:26px 22px; max-width:380px; width:100%;
+    box-shadow:0 20px 50px rgba(0,0,0,.32); text-align:center; max-height:82vh; overflow-y:auto;
+    position:relative;
+  }
+  .gift-box{font-size:66px; cursor:pointer; animation:giftBounce 1.6s ease-in-out infinite; display:inline-block;}
+  @keyframes giftBounce{0%,100%{transform:translateY(0) rotate(-3deg);}50%{transform:translateY(-8px) rotate(3deg);}}
+  .gift-tap-label{margin-top:10px; font-size:13px; color:var(--ink-soft);}
+  .gift-reveal-emoji{font-size:52px; margin-bottom:6px;}
+  .gift-title{font-family:'Shippori Mincho',serif; font-weight:800; font-size:19px; color:#2c3524; margin-bottom:8px;}
+  .gift-flavor{font-size:13.5px; color:var(--ink-soft); line-height:1.85; margin-bottom:12px;}
+  .gift-deco{font-size:13px; color:var(--moss-dark); font-weight:700; margin-bottom:18px;}
+  .modal-close-btn{
+    border:none; background:var(--moss); color:#fff; font-weight:700; padding:11px 26px;
+    border-radius:12px; font-size:14px; cursor:pointer; font-family:inherit;
+  }
+  .modal-close-btn:hover{background:var(--moss-dark);}
+
+  .letter-card{background:linear-gradient(180deg,#fffdf6,#faf3df); text-align:left;}
+  .letter-heading{font-family:'Shippori Mincho',serif; font-weight:800; font-size:17px; margin-bottom:12px; color:#2c3524;}
+  .letter-body{font-size:14px; line-height:2; color:var(--ink); white-space:pre-line; margin-bottom:20px;}
+  .modal-header-row{display:flex; justify-content:space-between; align-items:center; font-weight:700; margin-bottom:14px; font-size:15px; text-align:left;}
+  .modal-x{cursor:pointer; color:var(--ink-soft); font-size:16px;}
+  .letter-list-card{text-align:left;}
+  .letter-list-body{display:flex; flex-direction:column; gap:8px;}
+  .letter-list-empty{font-size:13px; color:var(--ink-soft); line-height:1.8; text-align:center; padding:16px 4px;}
+  .letter-row{
+    border:1px solid var(--line); border-radius:12px; padding:11px 13px; cursor:pointer;
+    display:flex; justify-content:space-between; align-items:center; font-size:13px; background:#fdfbf3;
+  }
+  .letter-row.unread{border-color:var(--amber); background:var(--amber-pale); font-weight:700;}
+  .letter-row .dot{width:8px; height:8px; border-radius:50%; background:var(--rose); flex:0 0 auto; margin-left:8px;}
+
+  .confetti-piece{
+    position:absolute; font-size:18px; pointer-events:none; left:50%; top:38%;
+    animation:confettiPop .9s ease-out forwards;
+  }
+  @keyframes confettiPop{
+    0%{transform:translate(-50%,-50%) scale(.4) rotate(0deg); opacity:1;}
+    100%{transform:translate(calc(-50% + var(--dx)), calc(-50% + var(--dy))) scale(1) rotate(var(--rot)); opacity:0;}
+  }
 </style>
 </head>
 <body>
+
+<button class="letter-fab" id="letterBtn" title="シェルターからの手紙">✉️<span class="badge" id="letterBadge" style="display:none;">0</span></button>
 
 <div class="wrap">
   <header>
@@ -319,6 +441,7 @@
     <div class="label">これまで積み重ねた時間・全タスク合計</div>
     <div class="big-time" id="grandTotal">0時間0分</div>
     <div class="sub" id="grandSub">まだ何も記録されていません</div>
+    <div class="deco-strip" id="decoStrip"><span class="deco-hint">🎁を開くと、ここに飾りが増えていきます</span></div>
   </div>
 
   <form class="add-form" id="addForm">
@@ -335,6 +458,17 @@
     </div>
   </div>
 
+  <div class="reward-panel">
+    <div class="reward-head">🎁 自分へのご褒美</div>
+    <div class="reward-sub">時間のしきい値を決めて、達成したら自分にご褒美を。誰かの評価ではなく、自分だけのルールです。</div>
+    <form id="rewardForm" class="reward-form">
+      <input id="rewardText" type="text" maxlength="40" placeholder="例：好きなコーヒーを飲む">
+      <input id="rewardHours" type="number" min="0.5" step="0.5" placeholder="時間">
+      <button type="submit">追加</button>
+    </form>
+    <div id="rewardList" class="reward-list"></div>
+  </div>
+
   <div id="taskList"></div>
 
   <footer>結果ではなく、時間を。<br>あなたが注いだ時間は、誰にも奪えません。
@@ -343,6 +477,40 @@
 </div>
 
 <div id="toastLayer"></div>
+
+<!-- 贈り物ボックス -->
+<div class="modal-overlay" id="giftModal">
+  <div class="modal-card">
+    <div id="giftStage">
+      <div class="gift-box" id="giftBoxTap">🎁</div>
+      <div class="gift-tap-label">タップして開ける</div>
+    </div>
+    <div id="giftReveal" style="display:none;">
+      <div class="gift-reveal-emoji" id="giftRevealEmoji"></div>
+      <div class="gift-title" id="giftTitleText"></div>
+      <div class="gift-flavor" id="giftFlavorText"></div>
+      <div class="gift-deco" id="giftDecoText"></div>
+      <button class="modal-close-btn" id="giftCloseBtn">とじる</button>
+    </div>
+  </div>
+</div>
+
+<!-- 手紙（本文） -->
+<div class="modal-overlay" id="letterReadModal">
+  <div class="modal-card letter-card">
+    <div class="letter-heading" id="letterHeading"></div>
+    <div class="letter-body" id="letterBody"></div>
+    <button class="modal-close-btn" id="letterReadCloseBtn">とじる</button>
+  </div>
+</div>
+
+<!-- 手紙棚（一覧） -->
+<div class="modal-overlay" id="letterListModal">
+  <div class="modal-card letter-list-card">
+    <div class="modal-header-row"><span>📮 シェルターからの手紙</span><span class="modal-x" id="letterListCloseBtn">✕</span></div>
+    <div id="letterListBody" class="letter-list-body"></div>
+  </div>
+</div>
 
 <script>
 (function(){
@@ -375,13 +543,47 @@
     { label:"伝説",     start:32, end:34 }
   ];
 
-  const SPECIES = [
-    { name:"桜",         emojis:["🌰","🌱","🌿","🪴","🪴🌸","🌸🌸","🌳🌸","🌳🌸✨","🌳🌸🌸✨","🏆👑🌳🌸🌸✨"] },
-    { name:"ひまわり",   emojis:["🌰","🌱","🌿","🪴","🪴🌻","🌻🌻","🌻🌻🌻","🌻✨","👑🌻🌻✨","🏆👑🌻🌻🌻✨"] },
-    { name:"竹",         emojis:["🌰","🌱","🎋","🎋🎋","🎋🌿","🐼🎋","🐼🎋🎋","🐼🎋✨","👑🐼🎋🎋✨","🏆👑🐼🎋🎋🎋✨"] },
-    { name:"もみじ",     emojis:["🌰","🌱","🌿","🪴","🪴🍁","🍁🍁","🌳🍁","🌳🍁✨","👑🌳🍁🍁✨","🏆👑🌳🍁🍁✨"] },
-    { name:"蓮",         emojis:["🌰","🌱","🌿","🪴","🪴🪷","🪷🪷","🪷🪷🪷","🪷✨","👑🪷🪷✨","🏆👑🪷🪷🪷✨"] },
-    { name:"りんごの木", emojis:["🌰","🌱","🌿","🪴","🪴🌸","🌳","🌳🍎","🌳🍎✨","👑🌳🍎🍎✨","🏆👑🌳🍎🍎🍎✨"] }
+  /* ティア到達（1〜9）で贈り物ボックスが出る。称号とひとこと */
+  const TIER_TITLES = [
+    null,
+    "はじめの一歩の証",
+    "続ける力の芽生え",
+    "根を張るものの証",
+    "静かな情熱の証",
+    "花開く努力の証",
+    "揺るがぬ歩みの証",
+    "たしかな積み重ねの証",
+    "揺るぎない継続者の証",
+    "時間を味方にした者の証"
+  ];
+  const TIER_FLAVORS = [
+    null,
+    "どんなに小さくても、動き出したことに意味があります。",
+    "続けるという選択を、あなたはまたひとつ積み重ねました。",
+    "焦らず、静かに根を伸ばしているところです。",
+    "派手さはなくても、その情熱は本物です。",
+    "積み重ねた時間が、ようやく形になり始めています。",
+    "揺れながらも、あなたは歩みを止めませんでした。",
+    "ここまで来た人は、そう多くありません。",
+    "もはや、これはあなたの生き方の一部です。",
+    "誰にも真似できない、あなただけの到達点です。"
+  ];
+
+  const DECORATIONS = ["🏮","🪑","🐦","⛲","🦋","🌙","⭐","🍄","🕊️","🎐","🧺","🪺","🐝","🍯","🔔","🪷"];
+
+  /* 全タスク合計時間の節目で届く手紙 */
+  const GRAND_MILESTONES = [60,300,600,1500,3000,6000,12000,30000,60000];
+  const GRAND_HLABELS    = [1,5,10,25,50,100,200,500,1000];
+  const LETTER_TEXTS = [
+    "最初の1時間、お疲れさまでした。\n特別なことは何もしていないように感じるかもしれません。でも、着手したという事実は、何も動かなかった昨日とは違います。\nここから先は、もう「積み重ねている人」です。",
+    "5時間が経ちました。\nまだ小さな芽ですが、確かに根を伸ばしはじめています。誰かに見せるためのものではなく、あなた自身のための時間です。\nゆっくりで大丈夫です。",
+    "10時間、到達です。\n三日坊主で終わらなかった、ということです。続けることの難しさを知っているからこそ、この10時間の重みが分かります。\nおめでとうございます。",
+    "25時間になりました。\n結果がどうであれ、この時間はあなたの中に確かに残っています。誰にも取り消せない、あなただけの記録です。\n引き続き、見守っています。",
+    "50時間。ここまで来ました。\n途中で止まりそうになった日も、きっとあったはずです。それでも戻ってきてくれたことが、何よりの証です。\n植物も、あなたも、静かに育っています。",
+    "100時間、到達しました。\n三桁の時間です。これはもう、偶然や勢いだけでは届かない場所です。あなたの意志が、ここまで運んできました。\n心から、おめでとうございます。",
+    "200時間になりました。\nここまで来ると、続けること自体があなたの一部になっているのではないでしょうか。評価される必要はありません。もう十分、誇っていい時間です。",
+    "500時間。折り返しを超えました。\n言葉にするのが難しいほどの積み重ねです。完璧である必要は、今もこれからもありません。ただ、あなたが注いだ時間は圧倒的な事実として、ここにあります。",
+    "1000時間。ついに、ここまで来ました。\nこの庭は、あなたが結果を問わずに時間を注ぎ続けた記録そのものです。誰かに認められるためではなく、あなた自身のために積み重ねたこの時間を、どうか誇ってください。\n本当に、おめでとうございます。"
   ];
 
   const PRAISES = [
@@ -408,11 +610,26 @@
     "次のステージへ。焦らずゆっくり、でも確実に。"
   ];
 
+  const SPECIES = [
+    { name:"桜",         emojis:["🌰","🌱","🌿","🪴","🪴🌸","🌸🌸","🌳🌸","🌳🌸✨","🌳🌸🌸✨","🏆👑🌳🌸🌸✨"] },
+    { name:"ひまわり",   emojis:["🌰","🌱","🌿","🪴","🪴🌻","🌻🌻","🌻🌻🌻","🌻✨","👑🌻🌻✨","🏆👑🌻🌻🌻✨"] },
+    { name:"竹",         emojis:["🌰","🌱","🎋","🎋🎋","🎋🌿","🐼🎋","🐼🎋🎋","🐼🎋✨","👑🐼🎋🎋✨","🏆👑🐼🎋🎋🎋✨"] },
+    { name:"もみじ",     emojis:["🌰","🌱","🌿","🪴","🪴🍁","🍁🍁","🌳🍁","🌳🍁✨","👑🌳🍁🍁✨","🏆👑🌳🍁🍁✨"] },
+    { name:"蓮",         emojis:["🌰","🌱","🌿","🪴","🪴🪷","🪷🪷","🪷🪷🪷","🪷✨","👑🪷🪷✨","🏆👑🪷🪷🪷✨"] },
+    { name:"りんごの木", emojis:["🌰","🌱","🌿","🪴","🪴🌸","🌳","🌳🍎","🌳🍎✨","👑🌳🍎🍎✨","🏆👑🌳🍎🍎🍎✨"] }
+  ];
+
   /* ============ state（対応環境では自動的に端末へ保存） ============ */
   const STORAGE_KEY = "growth-shelter-data-v1";
-  let tasks = [];   // {id, name, speciesIdx, minutes}
+  let tasks = [];          // {id, name, speciesIdx, minutes}
   let uid = 1;
+  let decorations = {};    // {emoji: count}
+  let letters = [];        // {id, milestoneIndex, hours, text, read, ts}
+  let rewards = [];        // {id, text, thresholdMinutes, claimed}
+  let maxTotalMinutes = 0; // 過去最高の合計時間（タスク削除しても下がらない）
   let storageAvailable = true;
+  let giftQueue = [];
+  let currentGiftItem = null;
 
   function loadFromStorage(){
     try{
@@ -430,7 +647,7 @@
   function saveToStorage(){
     if(!storageAvailable) return;
     try{
-      localStorage.setItem(STORAGE_KEY, JSON.stringify({ uid, tasks }));
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({ uid, tasks, decorations, letters, rewards, maxTotalMinutes }));
     }catch(e){
       storageAvailable = false; // 自動保存が使えない環境（プレビュー等）。保存/読込ボタンで代用。
     }
@@ -478,10 +695,194 @@
     setTimeout(()=>{ el.remove(); }, 3200);
   }
 
+  function escapeHtml(str){
+    return str.replace(/[&<>"']/g, c => ({
+      "&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"
+    }[c]));
+  }
+
   function grandTotalMinutes(){
     return tasks.reduce((s,t)=>s+t.minutes, 0);
   }
 
+  function openModal(id){ $("#"+id).classList.add("show"); }
+  function closeModal(id){ $("#"+id).classList.remove("show"); }
+
+  /* ============ 贈り物ボックス ============ */
+  function addDecoration(){
+    const emoji = randOf(DECORATIONS);
+    decorations[emoji] = (decorations[emoji]||0) + 1;
+    return emoji;
+  }
+
+  function renderDecoStrip(){
+    const el = $("#decoStrip");
+    const keys = Object.keys(decorations);
+    if(keys.length === 0){
+      el.innerHTML = '<span class="deco-hint">🎁を開くと、ここに飾りが増えていきます</span>';
+      return;
+    }
+    el.innerHTML = keys.map(k =>
+      `<span class="deco-chip">${k}<span class="cnt">${decorations[k]>1 ? ("×"+decorations[k]) : ""}</span></span>`
+    ).join("");
+  }
+
+  function generateConfetti(container){
+    const pieces = ["✨","🌟","💫","🎉"];
+    for(let i=0;i<14;i++){
+      const span = document.createElement("span");
+      span.className = "confetti-piece";
+      span.textContent = randOf(pieces);
+      const angle = Math.random()*Math.PI*2;
+      const dist = 60 + Math.random()*70;
+      span.style.setProperty("--dx", Math.cos(angle)*dist + "px");
+      span.style.setProperty("--dy", Math.sin(angle)*dist + "px");
+      span.style.setProperty("--rot", (Math.random()*240-120) + "deg");
+      container.appendChild(span);
+      setTimeout(()=>span.remove(), 950);
+    }
+  }
+
+  function openNextGift(){
+    if(giftQueue.length === 0) return;
+    currentGiftItem = giftQueue[0];
+    $("#giftStage").style.display = "";
+    $("#giftReveal").style.display = "none";
+    openModal("giftModal");
+  }
+
+  function revealGift(){
+    if(!currentGiftItem) return;
+    const { taskName, tierIdx } = currentGiftItem;
+    const deco = addDecoration();
+    $("#giftStage").style.display = "none";
+    $("#giftReveal").style.display = "block";
+    $("#giftRevealEmoji").textContent = deco;
+    $("#giftTitleText").textContent = TIER_TITLES[tierIdx] || "";
+    $("#giftFlavorText").textContent = `「${taskName}」が ${TIERS[tierIdx].label} へ。${TIER_FLAVORS[tierIdx]||""}`;
+    $("#giftDecoText").textContent = `${deco} を庭に迎えました`;
+    generateConfetti($("#giftModal .modal-card"));
+    saveToStorage();
+    renderDecoStrip();
+  }
+
+  function closeGift(){
+    closeModal("giftModal");
+    giftQueue.shift();
+    currentGiftItem = null;
+    if(giftQueue.length > 0){
+      setTimeout(openNextGift, 400);
+    }
+  }
+
+  /* ============ シェルターからの手紙 ============ */
+  function checkLetterMilestones(){
+    let added = false;
+    GRAND_MILESTONES.forEach((thresh, i) => {
+      if(maxTotalMinutes >= thresh && !letters.some(l => l.milestoneIndex === i)){
+        letters.push({
+          id: uid++, milestoneIndex: i, hours: GRAND_HLABELS[i],
+          text: LETTER_TEXTS[i], read: false, ts: Date.now()
+        });
+        added = true;
+      }
+    });
+    if(added){
+      saveToStorage();
+      showToast("📮 シェルターから手紙が届きました。", true);
+    }
+    renderLetterBadge();
+  }
+
+  function renderLetterBadge(){
+    const unread = letters.filter(l => !l.read).length;
+    const badge = $("#letterBadge");
+    if(unread > 0){
+      badge.style.display = "flex";
+      badge.textContent = unread;
+    } else {
+      badge.style.display = "none";
+    }
+  }
+
+  function renderLetterList(){
+    const body = $("#letterListBody");
+    if(letters.length === 0){
+      body.innerHTML = '<div class="letter-list-empty">まだ手紙は届いていません。<br>時間を積み重ねると、節目ごとに届きます。</div>';
+      return;
+    }
+    const sorted = [...letters].sort((a,b) => b.milestoneIndex - a.milestoneIndex);
+    body.innerHTML = sorted.map(l => `
+      <div class="letter-row ${l.read?'':'unread'}" data-letter="${l.id}">
+        <span>✉️ ${l.hours}時間 到達の手紙</span>
+        ${l.read ? "" : '<span class="dot"></span>'}
+      </div>
+    `).join("");
+  }
+
+  function openLetterById(id){
+    const letter = letters.find(l => l.id === id);
+    if(!letter) return;
+    letter.read = true;
+    saveToStorage();
+    renderLetterBadge();
+    $("#letterHeading").textContent = `✉️ ${letter.hours}時間、到達のお知らせ`;
+    $("#letterBody").textContent = letter.text;
+    closeModal("letterListModal");
+    openModal("letterReadModal");
+  }
+
+  /* ============ 自分で決めるご褒美 ============ */
+  function addReward(text, hours){
+    rewards.push({ id: uid++, text, thresholdMinutes: Math.round(hours*60), claimed: false });
+    saveToStorage();
+    renderRewards();
+  }
+
+  function claimReward(id){
+    const r = rewards.find(x => x.id === id);
+    if(!r || r.claimed) return;
+    r.claimed = true;
+    saveToStorage();
+    renderRewards();
+    showToast("🎉 ご褒美を受け取りました。よくがんばりました。", true);
+  }
+
+  function deleteReward(id){
+    if(!confirm("このご褒美を削除しますか？")) return;
+    rewards = rewards.filter(x => x.id !== id);
+    saveToStorage();
+    renderRewards();
+  }
+
+  function renderRewards(){
+    const el = $("#rewardList");
+    if(rewards.length === 0){
+      el.innerHTML = '<div class="reward-empty">まだご褒美が設定されていません。達成したい時間としたいことを決めてみましょう。</div>';
+      return;
+    }
+    const sorted = [...rewards].sort((a,b) => a.thresholdMinutes - b.thresholdMinutes);
+    el.innerHTML = sorted.map(r => {
+      const reached = maxTotalMinutes >= r.thresholdMinutes;
+      const remain = Math.max(0, r.thresholdMinutes - maxTotalMinutes);
+      const hoursLabel = (r.thresholdMinutes/60).toFixed(r.thresholdMinutes % 60 === 0 ? 0 : 1);
+      let metaHtml;
+      if(r.claimed) metaHtml = '<span class="meta-claimed">受け取り済み</span>';
+      else if(reached) metaHtml = '<span class="meta-reached">🎉 達成しました</span>';
+      else metaHtml = `<span class="meta-pending">あと ${fmtTime(remain)}</span>`;
+      return `
+        <div class="reward-item ${r.claimed?'claimed':''}">
+          <div class="reward-item-main">
+            <div class="reward-item-text">${escapeHtml(r.text)}（${hoursLabel}時間）</div>
+            <div class="reward-item-meta">${metaHtml}</div>
+          </div>
+          ${r.claimed ? '<span class="reward-check">✓</span>' : (reached ? `<button class="claim-btn" data-claim="${r.id}">受け取る</button>` : '')}
+          <button class="del-btn small" data-delreward="${r.id}">✕</button>
+        </div>`;
+    }).join("");
+  }
+
+  /* ============ 画面描画 ============ */
   function renderSummary(){
     const total = grandTotalMinutes();
     $("#grandTotal").textContent = fmtTime(total);
@@ -495,6 +896,9 @@
 
   function render(){
     renderSummary();
+    renderDecoStrip();
+    renderLetterBadge();
+    renderRewards();
     taskListEl.innerHTML = "";
     if(tasks.length === 0){
       taskListEl.innerHTML =
@@ -574,12 +978,6 @@
     return card;
   }
 
-  function escapeHtml(str){
-    return str.replace(/[&<>"']/g, c => ({
-      "&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"
-    }[c]));
-  }
-
   function addTask(name){
     tasks.push({
       id: uid++,
@@ -594,10 +992,15 @@
   function addMinutes(id, min){
     const task = tasks.find(t => t.id === id);
     if(!task) return;
-    const before = stageIndexOf(task.minutes);
-    task.minutes = Math.min(MAX_MINUTES, task.minutes + min);
-    const after = stageIndexOf(task.minutes);
+    const beforeStage = stageIndexOf(task.minutes);
+    const beforeTier = tierInfoOf(beforeStage).tierIdx;
 
+    task.minutes = Math.min(MAX_MINUTES, task.minutes + min);
+
+    const afterStage = stageIndexOf(task.minutes);
+    const afterTier = tierInfoOf(afterStage).tierIdx;
+
+    maxTotalMinutes = Math.max(maxTotalMinutes, grandTotalMinutes());
     saveToStorage();
     render();
 
@@ -608,10 +1011,20 @@
       plantEl.classList.add("pop");
     }
 
-    if(after > before){
-      showToast(`「${escapeHtml(task.name)}」が育ちました。${TIERS[tierInfoOf(after).tierIdx].label}へ。${randOf(LEVELUPS)}`, true);
+    if(afterStage > beforeStage){
+      showToast(`「${escapeHtml(task.name)}」が育ちました。${TIERS[afterTier].label}へ。${randOf(LEVELUPS)}`, true);
     } else {
       showToast(randOf(PRAISES), false);
+    }
+
+    if(afterTier > beforeTier && afterTier >= 1){
+      giftQueue.push({ taskName: task.name, tierIdx: afterTier });
+    }
+
+    checkLetterMilestones();
+
+    if(giftQueue.length > 0 && !$("#giftModal").classList.contains("show")){
+      openNextGift();
     }
   }
 
@@ -653,6 +1066,10 @@
     if(!confirm("保存されているすべての記録を消去します。よろしいですか？")) return;
     tasks = [];
     uid = 1;
+    decorations = {};
+    letters = [];
+    rewards = [];
+    maxTotalMinutes = 0;
     saveToStorage();
     render();
     showToast("記録を消去しました。また種から始めましょう。", false);
@@ -667,9 +1084,46 @@
     $("#installBanner").style.display = "none";
   });
 
+  /* ご褒美 */
+  $("#rewardForm").addEventListener("submit", (e) => {
+    e.preventDefault();
+    const text = $("#rewardText").value.trim();
+    const hours = parseFloat($("#rewardHours").value);
+    if(!text || !hours || hours <= 0) return;
+    addReward(text.slice(0,40), hours);
+    $("#rewardText").value = "";
+    $("#rewardHours").value = "";
+  });
+  $("#rewardList").addEventListener("click", (e) => {
+    const claimBtn = e.target.closest("[data-claim]");
+    if(claimBtn){ claimReward(Number(claimBtn.dataset.claim)); return; }
+    const delBtn = e.target.closest("[data-delreward]");
+    if(delBtn){ deleteReward(Number(delBtn.dataset.delreward)); return; }
+  });
+
+  /* 贈り物ボックス */
+  $("#giftBoxTap").addEventListener("click", revealGift);
+  $("#giftCloseBtn").addEventListener("click", closeGift);
+
+  /* 手紙 */
+  $("#letterBtn").addEventListener("click", () => {
+    renderLetterList();
+    openModal("letterListModal");
+  });
+  $("#letterListCloseBtn").addEventListener("click", () => closeModal("letterListModal"));
+  $("#letterListBody").addEventListener("click", (e) => {
+    const row = e.target.closest("[data-letter]");
+    if(row) openLetterById(Number(row.dataset.letter));
+  });
+  $("#letterReadCloseBtn").addEventListener("click", () => {
+    closeModal("letterReadModal");
+    renderLetterList();
+    openModal("letterListModal");
+  });
+
   /* ============ 保存 / 読込（JSONファイル） ============ */
   $("#exportBtn").addEventListener("click", () => {
-    const data = JSON.stringify({ uid, tasks }, null, 2);
+    const data = JSON.stringify({ uid, tasks, decorations, letters, rewards, maxTotalMinutes }, null, 2);
     const blob = new Blob([data], {type:"application/json"});
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -695,7 +1149,12 @@
         const data = JSON.parse(ev.target.result);
         if(!Array.isArray(data.tasks)) throw new Error("invalid");
         tasks = data.tasks;
-        uid = data.uid || (Math.max(0,...tasks.map(t=>t.id))+1);
+        decorations = data.decorations || {};
+        letters = data.letters || [];
+        rewards = data.rewards || [];
+        maxTotalMinutes = Math.max(data.maxTotalMinutes || 0, grandTotalMinutes());
+        uid = data.uid || (Math.max(0,...tasks.map(t=>t.id),...letters.map(l=>l.id||0),...rewards.map(r=>r.id||0))+1);
+        checkLetterMilestones();
         saveToStorage();
         render();
         showToast("記録を読み込みました。おかえりなさい。", false);
@@ -707,11 +1166,18 @@
     e.target.value = "";
   });
 
+  /* ============ 起動処理 ============ */
   const saved = loadFromStorage();
   if(saved){
-    tasks = saved.tasks;
-    uid = saved.uid || (Math.max(0,...tasks.map(t=>t.id))+1) || 1;
+    tasks = saved.tasks || [];
+    decorations = saved.decorations || {};
+    letters = saved.letters || [];
+    rewards = saved.rewards || [];
+    maxTotalMinutes = saved.maxTotalMinutes || 0;
+    uid = saved.uid || (Math.max(0,...tasks.map(t=>t.id),...letters.map(l=>l.id||0),...rewards.map(r=>r.id||0))+1) || 1;
   }
+  maxTotalMinutes = Math.max(maxTotalMinutes, grandTotalMinutes());
+  checkLetterMilestones();
   render();
 
   /* オフライン対応（https や localhost で開いている場合のみ有効。
