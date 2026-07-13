@@ -332,6 +332,44 @@
   .time-btns button:hover{background:var(--moss-pale); border-color:var(--moss);}
   .time-btns button:active{transform:scale(.94);}
 
+  /* ---------- Timer ---------- */
+  .timer-row{margin-top:10px; display:flex; align-items:center; gap:10px;}
+  .timer-btn{
+    border:1.5px solid var(--moss); background:var(--moss); color:#fff; font-weight:700;
+    font-size:13px; padding:9px 14px; border-radius:12px; cursor:pointer; font-family:inherit; flex:0 0 auto;
+    transition:background .12s ease, border-color .12s ease;
+  }
+  .timer-btn:hover{background:var(--moss-dark);}
+  .timer-btn.running{background:var(--rose); border-color:var(--rose);}
+  .timer-btn.running:hover{background:#c17971;}
+  .timer-display{font-variant-numeric:tabular-nums; font-weight:800; color:var(--moss-dark); font-size:14px;}
+
+  .task-card.running{
+    border-color:var(--moss);
+    animation:cardPulse 2.4s ease-in-out infinite;
+  }
+  @keyframes cardPulse{
+    0%,100%{box-shadow:0 0 0 3px rgba(109,143,91,0.12), var(--shadow);}
+    50%{box-shadow:0 0 0 5px rgba(109,143,91,0.24), var(--shadow);}
+  }
+
+  .timer-bar{
+    position:fixed; left:50%; transform:translateX(-50%); bottom:calc(14px + var(--safe-bottom));
+    max-width:480px; width:calc(100% - 32px); background:#2f3b27; color:#f6f4e6; border-radius:16px;
+    padding:12px 14px; display:none; align-items:center; justify-content:space-between; gap:10px;
+    box-shadow:0 10px 26px rgba(0,0,0,.28); z-index:45;
+  }
+  .timer-bar-info{display:flex; align-items:center; gap:10px; min-width:0;}
+  .timer-bar-emoji{font-size:20px; flex:0 0 auto;}
+  .timer-bar-text{min-width:0;}
+  .timer-bar-name{font-size:12px; font-weight:700; opacity:.85; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:170px;}
+  .timer-bar-time{font-size:16px; font-weight:800; font-variant-numeric:tabular-nums; color:var(--amber-pale);}
+  .timer-bar-stop{
+    border:none; background:var(--amber); color:#2c2410; font-weight:800; font-size:12.5px;
+    padding:10px 14px; border-radius:10px; cursor:pointer; font-family:inherit; flex:0 0 auto;
+  }
+  .timer-bar-stop:hover{background:#c9973f;}
+
   /* ---------- Toast ---------- */
   #toastLayer{
     position:fixed; left:0; right:0; bottom:calc(18px + var(--safe-bottom)); display:flex; flex-direction:column;
@@ -474,6 +512,17 @@
   <footer>結果ではなく、時間を。<br>あなたが注いだ時間は、誰にも奪えません。
     <div style="margin-top:10px;"><a href="#" id="resetLink" style="color:#b7b39c; font-size:11px; text-decoration:underline;">保存データを消去する</a></div>
   </footer>
+</div>
+
+<div class="timer-bar" id="timerBar">
+  <div class="timer-bar-info">
+    <span class="timer-bar-emoji">⏱️</span>
+    <div class="timer-bar-text">
+      <div class="timer-bar-name" id="timerBarName"></div>
+      <div class="timer-bar-time" id="timerBarTime">00:00:00</div>
+    </div>
+  </div>
+  <button class="timer-bar-stop" id="timerBarStop">記録して終了</button>
 </div>
 
 <div id="toastLayer"></div>
@@ -630,6 +679,9 @@
   let storageAvailable = true;
   let giftQueue = [];
   let currentGiftItem = null;
+  let runningTaskId = null;    // タイマー計測中のタスクID
+  let runningStartTs = null;   // 計測開始時刻（epoch ms）
+  let timerInterval = null;
 
   function loadFromStorage(){
     try{
@@ -647,7 +699,7 @@
   function saveToStorage(){
     if(!storageAvailable) return;
     try{
-      localStorage.setItem(STORAGE_KEY, JSON.stringify({ uid, tasks, decorations, letters, rewards, maxTotalMinutes }));
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({ uid, tasks, decorations, letters, rewards, maxTotalMinutes, runningTaskId, runningStartTs }));
     }catch(e){
       storageAvailable = false; // 自動保存が使えない環境（プレビュー等）。保存/読込ボタンで代用。
     }
@@ -683,6 +735,15 @@
     const m = minutes % 60;
     if(h <= 0) return m + "分";
     return h + "時間" + m + "分";
+  }
+
+  function fmtHMS(ms){
+    const totalSec = Math.max(0, Math.floor(ms/1000));
+    const h = Math.floor(totalSec/3600);
+    const m = Math.floor((totalSec%3600)/60);
+    const s = totalSec%60;
+    const pad = n => String(n).padStart(2,"0");
+    return `${pad(h)}:${pad(m)}:${pad(s)}`;
   }
 
   function randOf(arr){ return arr[Math.floor(Math.random()*arr.length)]; }
@@ -938,7 +999,8 @@
     const overallPct = Math.min(100, (task.minutes / MAX_MINUTES) * 100);
 
     const card = document.createElement("div");
-    card.className = "task-card";
+    const isRunning = task.id === runningTaskId;
+    card.className = "task-card" + (isRunning ? " running" : "");
     card.dataset.id = task.id;
 
     card.innerHTML = `
@@ -966,6 +1028,11 @@
           <div class="overall-marker" style="left:${overallPct}%">🌿</div>
         </div>
         <div class="overall-caption"><span>0h</span><span>${overallPct.toFixed(2)}% ・ 1000時間ゴール</span></div>
+      </div>
+
+      <div class="timer-row">
+        <button class="timer-btn ${isRunning?'running':''}" data-timer="${task.id}">${isRunning ? '■ 記録して終了' : '▶ タイマー開始'}</button>
+        <span class="timer-display" id="timerDisplay-${task.id}" style="${isRunning ? '' : 'display:none;'}">00:00:00</span>
       </div>
 
       <div class="time-btns">
@@ -1032,9 +1099,87 @@
     const task = tasks.find(t => t.id === id);
     if(!task) return;
     if(!confirm(`「${task.name}」を削除しますか？（積み上げた記録も消えます）`)) return;
+    if(runningTaskId === id){
+      runningTaskId = null;
+      runningStartTs = null;
+      stopTicking();
+    }
     tasks = tasks.filter(t => t.id !== id);
     saveToStorage();
     render();
+  }
+
+  /* ============ タイマー ============ */
+  function startTimer(taskId){
+    if(runningTaskId !== null && runningTaskId !== taskId){
+      stopTimer(runningTaskId);
+    }
+    if(runningTaskId === taskId) return;
+    runningTaskId = taskId;
+    runningStartTs = Date.now();
+    saveToStorage();
+    ensureTicking();
+    render();
+  }
+
+  function stopTimer(taskId){
+    if(runningTaskId !== taskId || runningStartTs === null){
+      runningTaskId = null;
+      runningStartTs = null;
+      stopTicking();
+      return;
+    }
+    const elapsedMs = Date.now() - runningStartTs;
+    const elapsedMinutes = Math.floor(elapsedMs/60000);
+    const task = tasks.find(t => t.id === taskId);
+
+    runningTaskId = null;
+    runningStartTs = null;
+    stopTicking();
+    saveToStorage();
+    $("#timerBar").style.display = "none";
+
+    if(task && elapsedMinutes > 0){
+      addMinutes(taskId, elapsedMinutes);
+    } else {
+      render();
+    }
+  }
+
+  function toggleTimer(taskId){
+    if(runningTaskId === taskId){
+      stopTimer(taskId);
+    } else {
+      startTimer(taskId);
+    }
+  }
+
+  function ensureTicking(){
+    if(timerInterval) return;
+    timerInterval = setInterval(tickTimer, 1000);
+    tickTimer();
+  }
+
+  function stopTicking(){
+    if(timerInterval){
+      clearInterval(timerInterval);
+      timerInterval = null;
+    }
+    $("#timerBar").style.display = "none";
+  }
+
+  function tickTimer(){
+    if(runningTaskId === null || runningStartTs === null) return;
+    const elapsedMs = Date.now() - runningStartTs;
+    const text = fmtHMS(elapsedMs);
+    const cardDisplay = document.getElementById("timerDisplay-"+runningTaskId);
+    if(cardDisplay) cardDisplay.textContent = text;
+    const task = tasks.find(t => t.id === runningTaskId);
+    if(task){
+      $("#timerBar").style.display = "flex";
+      $("#timerBarName").textContent = task.name;
+      $("#timerBarTime").textContent = text;
+    }
   }
 
   /* ============ イベント ============ */
@@ -1054,11 +1199,20 @@
       addMinutes(Number(addBtn.dataset.add), Number(addBtn.dataset.min));
       return;
     }
+    const timerBtn = e.target.closest("[data-timer]");
+    if(timerBtn){
+      toggleTimer(Number(timerBtn.dataset.timer));
+      return;
+    }
     const delBtn = e.target.closest("[data-del]");
     if(delBtn){
       deleteTask(Number(delBtn.dataset.del));
       return;
     }
+  });
+
+  $("#timerBarStop").addEventListener("click", () => {
+    if(runningTaskId !== null) stopTimer(runningTaskId);
   });
 
   $("#resetLink").addEventListener("click", (e) => {
@@ -1070,6 +1224,9 @@
     letters = [];
     rewards = [];
     maxTotalMinutes = 0;
+    runningTaskId = null;
+    runningStartTs = null;
+    stopTicking();
     saveToStorage();
     render();
     showToast("記録を消去しました。また種から始めましょう。", false);
@@ -1123,7 +1280,7 @@
 
   /* ============ 保存 / 読込（JSONファイル） ============ */
   $("#exportBtn").addEventListener("click", () => {
-    const data = JSON.stringify({ uid, tasks, decorations, letters, rewards, maxTotalMinutes }, null, 2);
+    const data = JSON.stringify({ uid, tasks, decorations, letters, rewards, maxTotalMinutes, runningTaskId, runningStartTs }, null, 2);
     const blob = new Blob([data], {type:"application/json"});
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -1175,10 +1332,28 @@
     rewards = saved.rewards || [];
     maxTotalMinutes = saved.maxTotalMinutes || 0;
     uid = saved.uid || (Math.max(0,...tasks.map(t=>t.id),...letters.map(l=>l.id||0),...rewards.map(r=>r.id||0))+1) || 1;
+
+    if(saved.runningTaskId !== null && saved.runningTaskId !== undefined &&
+       saved.runningStartTs && tasks.some(t => t.id === saved.runningTaskId)){
+      const elapsedMs = Date.now() - saved.runningStartTs;
+      const elapsedMin = Math.floor(elapsedMs/60000);
+      if(elapsedMin >= 180){
+        const keep = confirm(`タイマーが動いたままでした（約${fmtTime(elapsedMin)}経過）。このまま続けて記録しますか？\n（キャンセルすると、この間の時間は記録されません）`);
+        if(keep){
+          runningTaskId = saved.runningTaskId;
+          runningStartTs = saved.runningStartTs;
+        }
+        saveToStorage();
+      } else {
+        runningTaskId = saved.runningTaskId;
+        runningStartTs = saved.runningStartTs;
+      }
+    }
   }
   maxTotalMinutes = Math.max(maxTotalMinutes, grandTotalMinutes());
   checkLetterMilestones();
   render();
+  if(runningTaskId !== null) ensureTicking();
 
   /* オフライン対応（https や localhost で開いている場合のみ有効。
      file:// で直接開いた場合や一部プレビュー環境では登録に失敗するが、
