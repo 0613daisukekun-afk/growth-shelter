@@ -109,7 +109,11 @@
     box-shadow:var(--shadow);
     position:relative;
     overflow:hidden;
+    cursor:pointer;
+    -webkit-tap-highlight-color:transparent;
+    transition:transform .12s ease;
   }
+  .shelter-summary:active{transform:scale(.985);}
   .shelter-summary::after{
     content:"🌿";
     position:absolute; right:-6px; bottom:-18px; font-size:96px; opacity:.12;
@@ -282,6 +286,9 @@
   }
   .time-total{
     font-size:12.5px; color:var(--ink-soft); margin-top:2px;
+  }
+  .today-total{
+    font-size:11.5px; color:var(--amber); font-weight:700; margin-top:2px;
   }
 
   /* progress bars */
@@ -475,8 +482,8 @@
     </div>
   </div>
 
-  <div class="shelter-summary">
-    <div class="label">これまで積み重ねた時間・全タスク合計</div>
+  <div class="shelter-summary" id="summaryToggle">
+    <div class="label" id="grandLabel">これまで積み重ねた時間・全タスク合計</div>
     <div class="big-time" id="grandTotal">0時間0分</div>
     <div class="sub" id="grandSub">まだ何も記録されていません</div>
     <div class="deco-strip" id="decoStrip"><span class="deco-hint">🎁を開くと、ここに飾りが増えていきます</span></div>
@@ -682,6 +689,8 @@
   let runningTaskId = null;    // タイマー計測中のタスクID
   let runningStartTs = null;   // 計測開始時刻（epoch ms）
   let timerInterval = null;
+  let dailyByTask = {};        // {taskId: {"YYYY-MM-DD": minutes}}
+  let summaryMode = "all";     // "all" | "today"
 
   function loadFromStorage(){
     try{
@@ -699,7 +708,7 @@
   function saveToStorage(){
     if(!storageAvailable) return;
     try{
-      localStorage.setItem(STORAGE_KEY, JSON.stringify({ uid, tasks, decorations, letters, rewards, maxTotalMinutes, runningTaskId, runningStartTs }));
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({ uid, tasks, decorations, letters, rewards, maxTotalMinutes, runningTaskId, runningStartTs, dailyByTask }));
     }catch(e){
       storageAvailable = false; // 自動保存が使えない環境（プレビュー等）。保存/読込ボタンで代用。
     }
@@ -744,6 +753,21 @@
     const s = totalSec%60;
     const pad = n => String(n).padStart(2,"0");
     return `${pad(h)}:${pad(m)}:${pad(s)}`;
+  }
+
+  function todayStr(){
+    const d = new Date();
+    const pad = n => String(n).padStart(2,"0");
+    return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+  }
+
+  function todayMinutesForTask(taskId){
+    const ds = todayStr();
+    return (dailyByTask[taskId] && dailyByTask[taskId][ds]) || 0;
+  }
+
+  function todayGrandTotal(){
+    return tasks.reduce((s,t) => s + todayMinutesForTask(t.id), 0);
   }
 
   function randOf(arr){ return arr[Math.floor(Math.random()*arr.length)]; }
@@ -946,12 +970,22 @@
   /* ============ 画面描画 ============ */
   function renderSummary(){
     const total = grandTotalMinutes();
-    $("#grandTotal").textContent = fmtTime(total);
-    if(tasks.length === 0){
-      $("#grandSub").textContent = "まだ何も記録されていません";
+    if(summaryMode === "today"){
+      const todayMin = todayGrandTotal();
+      $("#grandLabel").textContent = "🔄 今日、積み重ねた時間";
+      $("#grandTotal").textContent = fmtTime(todayMin);
+      $("#grandSub").textContent = (todayMin === 0
+        ? "今日はまだ記録がありません"
+        : "今日もちゃんと時間を使いました") + "・タップで全期間の合計へ";
     } else {
-      const pct = Math.min(100, (total / (MAX_MINUTES*tasks.length)) * 100);
-      $("#grandSub").textContent = tasks.length + "個のタスクを育成中・平均達成率 " + pct.toFixed(1) + "%";
+      $("#grandLabel").textContent = "🔄 これまで積み重ねた時間・全タスク合計";
+      $("#grandTotal").textContent = fmtTime(total);
+      if(tasks.length === 0){
+        $("#grandSub").textContent = "まだ何も記録されていません・タップで今日の時間へ";
+      } else {
+        const pct = Math.min(100, (total / (MAX_MINUTES*tasks.length)) * 100);
+        $("#grandSub").textContent = tasks.length + "個のタスクを育成中・平均達成率 " + pct.toFixed(1) + "%・タップで今日の時間へ";
+      }
     }
   }
 
@@ -1016,6 +1050,7 @@
           </div>
           <div class="stage-label">Lv.${sIdx+1}/${STAGE_MINUTES.length}・${tierLabel}${subCount>1?`(${sub+1}/${subCount})`:""}・${species.name}</div>
           <div class="time-total">累計 ${fmtTime(task.minutes)}</div>
+          <div class="today-total">今日 ${fmtTime(todayMinutesForTask(task.id))}</div>
         </div>
       </div>
 
@@ -1062,7 +1097,14 @@
     const beforeStage = stageIndexOf(task.minutes);
     const beforeTier = tierInfoOf(beforeStage).tierIdx;
 
+    const prevMinutes = task.minutes;
     task.minutes = Math.min(MAX_MINUTES, task.minutes + min);
+    const actualAdded = task.minutes - prevMinutes;
+    if(actualAdded > 0){
+      if(!dailyByTask[task.id]) dailyByTask[task.id] = {};
+      const ds = todayStr();
+      dailyByTask[task.id][ds] = (dailyByTask[task.id][ds] || 0) + actualAdded;
+    }
 
     const afterStage = stageIndexOf(task.minutes);
     const afterTier = tierInfoOf(afterStage).tierIdx;
@@ -1215,6 +1257,11 @@
     if(runningTaskId !== null) stopTimer(runningTaskId);
   });
 
+  $("#summaryToggle").addEventListener("click", () => {
+    summaryMode = (summaryMode === "all") ? "today" : "all";
+    renderSummary();
+  });
+
   $("#resetLink").addEventListener("click", (e) => {
     e.preventDefault();
     if(!confirm("保存されているすべての記録を消去します。よろしいですか？")) return;
@@ -1224,6 +1271,7 @@
     letters = [];
     rewards = [];
     maxTotalMinutes = 0;
+    dailyByTask = {};
     runningTaskId = null;
     runningStartTs = null;
     stopTicking();
@@ -1280,7 +1328,7 @@
 
   /* ============ 保存 / 読込（JSONファイル） ============ */
   $("#exportBtn").addEventListener("click", () => {
-    const data = JSON.stringify({ uid, tasks, decorations, letters, rewards, maxTotalMinutes, runningTaskId, runningStartTs }, null, 2);
+    const data = JSON.stringify({ uid, tasks, decorations, letters, rewards, maxTotalMinutes, runningTaskId, runningStartTs, dailyByTask }, null, 2);
     const blob = new Blob([data], {type:"application/json"});
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -1309,6 +1357,7 @@
         decorations = data.decorations || {};
         letters = data.letters || [];
         rewards = data.rewards || [];
+        dailyByTask = data.dailyByTask || {};
         maxTotalMinutes = Math.max(data.maxTotalMinutes || 0, grandTotalMinutes());
         uid = data.uid || (Math.max(0,...tasks.map(t=>t.id),...letters.map(l=>l.id||0),...rewards.map(r=>r.id||0))+1);
         checkLetterMilestones();
@@ -1331,6 +1380,7 @@
     letters = saved.letters || [];
     rewards = saved.rewards || [];
     maxTotalMinutes = saved.maxTotalMinutes || 0;
+    dailyByTask = saved.dailyByTask || {};
     uid = saved.uid || (Math.max(0,...tasks.map(t=>t.id),...letters.map(l=>l.id||0),...rewards.map(r=>r.id||0))+1) || 1;
 
     if(saved.runningTaskId !== null && saved.runningTaskId !== undefined &&
