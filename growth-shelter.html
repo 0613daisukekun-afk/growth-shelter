@@ -204,8 +204,22 @@
     border-radius:12px; padding:0 16px; cursor:pointer; font-family:inherit;
   }
   .reward-form button:hover{background:#c98f38;}
+  .reward-summary{
+    margin-top:12px; display:flex; align-items:center; justify-content:space-between; gap:8px;
+    border:1.5px solid var(--line); border-radius:14px; padding:11px 14px; cursor:pointer;
+    background:#fbf9f1; font-size:12.5px; color:var(--ink); font-weight:700;
+    transition:border-color .12s ease;
+  }
+  .reward-summary:hover{border-color:var(--amber);}
+  .reward-summary .chev{color:var(--ink-soft); font-size:12px; font-weight:400;}
+  .reward-empty-inline{font-size:12.5px; color:var(--ink-soft); line-height:1.8; padding:6px 2px;}
   .reward-list{margin-top:12px; display:flex; flex-direction:column; gap:8px;}
   .reward-empty{font-size:12.5px; color:var(--ink-soft); line-height:1.8; padding:6px 2px;}
+  .reward-modal-section-title{
+    font-size:11.5px; font-weight:800; color:var(--moss-dark); margin:14px 0 6px; letter-spacing:.03em;
+  }
+  .reward-modal-section-title:first-child{margin-top:0;}
+  .reward-date{color:var(--ink-soft);}
   .reward-item{
     display:flex; align-items:center; gap:8px; border:1px solid var(--line); border-radius:14px;
     padding:10px 12px; background:#fdfbf3;
@@ -511,7 +525,7 @@
       <input id="rewardHours" type="number" min="0.5" step="0.5" placeholder="時間">
       <button type="submit">追加</button>
     </form>
-    <div id="rewardList" class="reward-list"></div>
+    <div class="reward-summary" id="rewardSummary">🎁 まだご褒美が設定されていません <span class="chev">›</span></div>
   </div>
 
   <div id="taskList"></div>
@@ -565,6 +579,14 @@
   <div class="modal-card letter-list-card">
     <div class="modal-header-row"><span>📮 シェルターからの手紙</span><span class="modal-x" id="letterListCloseBtn">✕</span></div>
     <div id="letterListBody" class="letter-list-body"></div>
+  </div>
+</div>
+
+<!-- ご褒美一覧 -->
+<div class="modal-overlay" id="rewardListModal">
+  <div class="modal-card letter-list-card">
+    <div class="modal-header-row"><span>🎁 ご褒美一覧</span><span class="modal-x" id="rewardListCloseBtn">✕</span></div>
+    <div id="rewardListBody" class="letter-list-body"></div>
   </div>
 </div>
 
@@ -919,17 +941,18 @@
 
   /* ============ 自分で決めるご褒美 ============ */
   function addReward(text, hours){
-    rewards.push({ id: uid++, text, thresholdMinutes: Math.round(hours*60), claimed: false });
+    rewards.push({ id: uid++, text, thresholdMinutes: Math.round(hours*60), claimed: false, claimedAt: null });
     saveToStorage();
-    renderRewards();
+    refreshRewardsUI();
   }
 
   function claimReward(id){
     const r = rewards.find(x => x.id === id);
     if(!r || r.claimed) return;
     r.claimed = true;
+    r.claimedAt = Date.now();
     saveToStorage();
-    renderRewards();
+    refreshRewardsUI();
     showToast("🎉 ご褒美を受け取りました。よくがんばりました。", true);
   }
 
@@ -937,34 +960,86 @@
     if(!confirm("このご褒美を削除しますか？")) return;
     rewards = rewards.filter(x => x.id !== id);
     saveToStorage();
-    renderRewards();
+    refreshRewardsUI();
   }
 
-  function renderRewards(){
-    const el = $("#rewardList");
+  function fmtDate(ts){
+    const d = new Date(ts);
+    const pad = n => String(n).padStart(2,"0");
+    return `${d.getFullYear()}/${pad(d.getMonth()+1)}/${pad(d.getDate())}`;
+  }
+
+  function refreshRewardsUI(){
+    renderRewardSummary();
+    if($("#rewardListModal").classList.contains("show")){
+      renderRewardModal();
+    }
+  }
+
+  function renderRewardSummary(){
+    const el = $("#rewardSummary");
     if(rewards.length === 0){
-      el.innerHTML = '<div class="reward-empty">まだご褒美が設定されていません。達成したい時間としたいことを決めてみましょう。</div>';
+      el.innerHTML = '🎁 まだご褒美が設定されていません <span class="chev">›</span>';
       return;
     }
-    const sorted = [...rewards].sort((a,b) => a.thresholdMinutes - b.thresholdMinutes);
-    el.innerHTML = sorted.map(r => {
-      const reached = maxTotalMinutes >= r.thresholdMinutes;
+    const claimedCount = rewards.filter(r => r.claimed).length;
+    const reachedCount = rewards.filter(r => !r.claimed && maxTotalMinutes >= r.thresholdMinutes).length;
+    let text = `🎁 ご褒美 ${rewards.length}件`;
+    if(reachedCount > 0) text += `・受け取り可能 ${reachedCount}`;
+    text += `・受け取り済み ${claimedCount}`;
+    el.innerHTML = `${text} <span class="chev">›</span>`;
+  }
+
+  function rewardRowHtml(r, state){
+    const hoursLabel = (r.thresholdMinutes/60).toFixed(r.thresholdMinutes % 60 === 0 ? 0 : 1);
+    let metaHtml, rightHtml;
+    if(state === "claimed"){
+      metaHtml = `<span class="reward-date">${r.claimedAt ? fmtDate(r.claimedAt)+" 受け取り" : "受け取り済み"}</span>`;
+      rightHtml = '<span class="reward-check">✓</span>';
+    } else if(state === "reached"){
+      metaHtml = '<span class="meta-reached">🎉 達成しました</span>';
+      rightHtml = `<button class="claim-btn" data-claim="${r.id}">受け取る</button>`;
+    } else {
       const remain = Math.max(0, r.thresholdMinutes - maxTotalMinutes);
-      const hoursLabel = (r.thresholdMinutes/60).toFixed(r.thresholdMinutes % 60 === 0 ? 0 : 1);
-      let metaHtml;
-      if(r.claimed) metaHtml = '<span class="meta-claimed">受け取り済み</span>';
-      else if(reached) metaHtml = '<span class="meta-reached">🎉 達成しました</span>';
-      else metaHtml = `<span class="meta-pending">あと ${fmtTime(remain)}</span>`;
-      return `
-        <div class="reward-item ${r.claimed?'claimed':''}">
-          <div class="reward-item-main">
-            <div class="reward-item-text">${escapeHtml(r.text)}（${hoursLabel}時間）</div>
-            <div class="reward-item-meta">${metaHtml}</div>
-          </div>
-          ${r.claimed ? '<span class="reward-check">✓</span>' : (reached ? `<button class="claim-btn" data-claim="${r.id}">受け取る</button>` : '')}
-          <button class="del-btn small" data-delreward="${r.id}">✕</button>
-        </div>`;
-    }).join("");
+      metaHtml = `<span class="meta-pending">あと ${fmtTime(remain)}</span>`;
+      rightHtml = "";
+    }
+    return `
+      <div class="reward-item ${state==='claimed'?'claimed':''}">
+        <div class="reward-item-main">
+          <div class="reward-item-text">${escapeHtml(r.text)}（${hoursLabel}時間）</div>
+          <div class="reward-item-meta">${metaHtml}</div>
+        </div>
+        ${rightHtml}
+        <button class="del-btn small" data-delreward="${r.id}">✕</button>
+      </div>`;
+  }
+
+  function renderRewardModal(){
+    const body = $("#rewardListBody");
+    if(rewards.length === 0){
+      body.innerHTML = '<div class="letter-list-empty">まだご褒美が設定されていません。<br>達成したい時間としたいことを決めてみましょう。</div>';
+      return;
+    }
+    const reached = rewards.filter(r => !r.claimed && maxTotalMinutes >= r.thresholdMinutes);
+    const pending = rewards.filter(r => !r.claimed && maxTotalMinutes < r.thresholdMinutes)
+                            .sort((a,b) => a.thresholdMinutes - b.thresholdMinutes);
+    const claimed = rewards.filter(r => r.claimed)
+                            .sort((a,b) => (b.claimedAt||0) - (a.claimedAt||0));
+    let html = "";
+    if(reached.length){
+      html += '<div class="reward-modal-section-title">🎉 受け取り可能</div>';
+      html += reached.map(r => rewardRowHtml(r,"reached")).join("");
+    }
+    if(pending.length){
+      html += '<div class="reward-modal-section-title">⏳ 挑戦中</div>';
+      html += pending.map(r => rewardRowHtml(r,"pending")).join("");
+    }
+    if(claimed.length){
+      html += '<div class="reward-modal-section-title">✅ 受け取り済み（日付順）</div>';
+      html += claimed.map(r => rewardRowHtml(r,"claimed")).join("");
+    }
+    body.innerHTML = html;
   }
 
   /* ============ 画面描画 ============ */
@@ -993,7 +1068,7 @@
     renderSummary();
     renderDecoStrip();
     renderLetterBadge();
-    renderRewards();
+    renderRewardSummary();
     taskListEl.innerHTML = "";
     if(tasks.length === 0){
       taskListEl.innerHTML =
@@ -1299,7 +1374,12 @@
     $("#rewardText").value = "";
     $("#rewardHours").value = "";
   });
-  $("#rewardList").addEventListener("click", (e) => {
+  $("#rewardSummary").addEventListener("click", () => {
+    renderRewardModal();
+    openModal("rewardListModal");
+  });
+  $("#rewardListCloseBtn").addEventListener("click", () => closeModal("rewardListModal"));
+  $("#rewardListBody").addEventListener("click", (e) => {
     const claimBtn = e.target.closest("[data-claim]");
     if(claimBtn){ claimReward(Number(claimBtn.dataset.claim)); return; }
     const delBtn = e.target.closest("[data-delreward]");
